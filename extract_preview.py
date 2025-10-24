@@ -488,6 +488,71 @@ def clean_dataframe_for_excel(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def deduplicate_dataframe(
+    df: pd.DataFrame,
+    column: str,
+    strategy: str = "last"
+) -> Tuple[pd.DataFrame, int]:
+    """
+    Dédoublonne un DataFrame selon une colonne et une stratégie.
+
+    Args:
+        df: DataFrame à dédoublonner
+        column: Nom de la colonne sur laquelle dédoublonner
+        strategy: Stratégie de dédoublonnage
+            - "first": Garde la première occurrence
+            - "last": Garde la dernière occurrence
+            - "most_recent": Garde l'occurrence la plus récente (selon log_date)
+
+    Returns:
+        Tuple (DataFrame dédoublonné, nombre de doublons supprimés)
+
+    Raises:
+        ValueError: Si la colonne n'existe pas ou si la stratégie est invalide
+    """
+    if df.empty:
+        return df, 0
+
+    if column not in df.columns:
+        raise ValueError(f"La colonne '{column}' n'existe pas dans le DataFrame")
+
+    valid_strategies = ["first", "last", "most_recent"]
+    if strategy not in valid_strategies:
+        raise ValueError(f"Stratégie invalide. Choisissez parmi : {valid_strategies}")
+
+    initial_count = len(df)
+    df_dedup = df.copy()
+
+    if strategy == "most_recent":
+        # Identifier la colonne de date à utiliser
+        date_col = None
+        for col in ["log_date", "last_log_date", "chosen_last_date", "session_start"]:
+            if col in df.columns:
+                date_col = col
+                break
+
+        if date_col is None:
+            st.warning(
+                "⚠️ Aucune colonne de date trouvée pour la stratégie 'plus récent'. "
+                "Utilisation de 'last' à la place."
+            )
+            df_dedup = df.drop_duplicates(subset=[column], keep="last")
+        else:
+            # Trier par la colonne de dédoublonnage et la date (desc)
+            df = df.sort_values([column, date_col], ascending=[True, False])
+            df_dedup = df.drop_duplicates(subset=[column], keep="first")
+
+    elif strategy == "first":
+        df_dedup = df.drop_duplicates(subset=[column], keep="first")
+
+    elif strategy == "last":
+        df_dedup = df.drop_duplicates(subset=[column], keep="last")
+
+    duplicates_removed = initial_count - len(df_dedup)
+
+    return df_dedup, duplicates_removed
+
+
 def create_excel_export(df: pd.DataFrame, event_title: str) -> Tuple[BytesIO, str]:
     """
     Crée un export Excel à partir d'un DataFrame.
@@ -594,6 +659,38 @@ def main():
         help="Sélectionnez le type de vue pour l'export"
     )
 
+    # Options de dédoublonnage
+    st.sidebar.markdown("---")
+    st.sidebar.header("🔄 Dédoublonnage")
+    enable_dedup = st.sidebar.checkbox(
+        "Activer le dédoublonnage",
+        value=False,
+        help="Supprime les doublons selon une colonne spécifique"
+    )
+
+    dedup_column = None
+    dedup_strategy = None
+
+    if enable_dedup:
+        dedup_column = st.sidebar.selectbox(
+            "Colonne de dédoublonnage",
+            ["presentation_id", "session_name"],
+            index=0,
+            help="Colonne sur laquelle dédoublonner les données"
+        )
+
+        dedup_strategy = st.sidebar.radio(
+            "Stratégie",
+            ["first", "last", "most_recent"],
+            index=1,
+            format_func=lambda x: {
+                "first": "Première occurrence",
+                "last": "Dernière occurrence",
+                "most_recent": "Plus récente (selon date)"
+            }[x],
+            help="Quelle ligne garder en cas de doublon"
+        )
+
     # Validation des paramètres de connexion
     if not all([config["server"], config["database"], config["username"], config["password"]]):
         st.warning("⚠️ Veuillez remplir tous les champs de connexion dans la sidebar.")
@@ -663,8 +760,29 @@ def main():
                     # Nettoyage
                     df = clean_dataframe_for_excel(df)
 
-                    # Affichage des résultats
-                    st.success(f"✅ **{len(df)}** ligne(s) récupérée(s).")
+                    # Affichage des résultats initiaux
+                    initial_count = len(df)
+                    st.success(f"✅ **{initial_count}** ligne(s) récupérée(s).")
+
+                    # Dédoublonnage si activé
+                    duplicates_removed = 0
+                    if enable_dedup and dedup_column and dedup_strategy:
+                        try:
+                            df, duplicates_removed = deduplicate_dataframe(
+                                df,
+                                dedup_column,
+                                dedup_strategy
+                            )
+                            if duplicates_removed > 0:
+                                st.info(
+                                    f"🔄 Dédoublonnage effectué : **{duplicates_removed}** "
+                                    f"doublon(s) supprimé(s) sur la colonne '{dedup_column}'. "
+                                    f"**{len(df)}** ligne(s) restante(s)."
+                                )
+                            else:
+                                st.info("ℹ️ Aucun doublon détecté.")
+                        except ValueError as e:
+                            st.error(f"❌ Erreur de dédoublonnage : {e}")
 
                     # Distribution par mode
                     display_mode_distribution(df)

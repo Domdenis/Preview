@@ -13,6 +13,10 @@ Ce script permet de se connecter à une base de données SQL Server (congres), d
   - Toutes les lignes brutes (uploads + previews)
   - Dernier événement par type (max 2 lignes/présentation)
   - 1 ligne par présentation (règle métier avec priorité onsite)
+- **Dédoublonnage flexible** :
+  - Suppression des doublons par presentation_id ou session_name
+  - 3 stratégies : première occurrence, dernière occurrence, ou plus récente
+  - Statistiques de dédoublonnage en temps réel
 - **Export Excel** avec nettoyage des caractères incompatibles
 - **Formatage automatique** des délais (jours, heures, minutes)
 - **Interface utilisateur intuitive** avec Streamlit
@@ -106,6 +110,37 @@ Choisissez parmi les 3 vues disponibles :
 - Priorité au mode onsite (preview/terminal)
 - Vue consolidée pour reporting
 
+### Options de dédoublonnage
+
+L'application propose une fonctionnalité de dédoublonnage pour supprimer les lignes en double selon vos critères :
+
+#### Activation
+Cochez la case **"Activer le dédoublonnage"** dans la sidebar pour activer cette fonctionnalité.
+
+#### Colonne de dédoublonnage
+Choisissez la colonne sur laquelle identifier les doublons :
+- **presentation_id** : Dédoublonne par ID de présentation (recommandé)
+- **session_name** : Dédoublonne par nom de session
+
+#### Stratégie de dédoublonnage
+Sélectionnez quelle ligne conserver en cas de doublon :
+
+1. **Première occurrence** : Garde la première ligne rencontrée
+2. **Dernière occurrence** : Garde la dernière ligne rencontrée
+3. **Plus récente (selon date)** : Garde la ligne avec la date la plus récente
+   - Utilise automatiquement la colonne de date disponible (log_date, last_log_date, etc.)
+   - Idéal pour conserver les données les plus à jour
+
+#### Exemple d'utilisation
+- Pour une vue avec plusieurs uploads par présentation, utilisez `presentation_id` + `Plus récente` pour ne garder que le dernier upload de chaque présentation
+- Pour éliminer les sessions en double, utilisez `session_name` + stratégie de votre choix
+
+#### Statistiques
+Après le dédoublonnage, l'application affiche :
+- Le nombre de doublons supprimés
+- Le nombre de lignes restantes
+- Un message si aucun doublon n'a été détecté
+
 ### Export des données
 
 1. Sélectionnez un congrès dans la liste déroulante
@@ -132,8 +167,9 @@ Choisissez parmi les 3 vues disponibles :
 - `get_events()` : Liste des événements
 - `execute_query_with_params()` : Exécution de requêtes paramétrées
 
-### Export
+### Export et Traitement
 - `clean_dataframe_for_excel()` : Nettoyage des DataFrames
+- `deduplicate_dataframe()` : Dédoublonnage avec stratégies multiples
 - `create_excel_export()` : Création du fichier Excel
 
 ### Interface
