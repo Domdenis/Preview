@@ -60,11 +60,12 @@ base_pc AS (
   SELECT
     pc.presentation_id AS program_intervention_id,
     ses.event_id,
-    pc.strTitle AS presentation_title,
+    i.strTitre AS presentation_title,
     ses.strTitre  AS session_name,
     ses.[start]   AS session_start
   FROM congres.dbo.v_presentation_client pc
   JOIN congres.dbo.[session] ses ON ses.intIdSession = pc.session_id
+  JOIN congres.dbo.t_evt_interventions i ON i.intIdIntervention = pc.presentation_id
   WHERE ses.event_id = ?
 ),
 base AS (
