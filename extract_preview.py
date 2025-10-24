@@ -49,7 +49,7 @@ SQL_ALL_LINES = """
   SELECT
     vis.idIntervntn AS program_intervention_id,
     ses.event_id,
-    vis.strTitre AS presentation_title,
+    vis.titreIntervntn AS presentation_title,
     ses.strTitre  AS session_name,
     ses.[start]   AS session_start
   FROM congres.dbo.v_evt_interventions_salles vis
@@ -152,7 +152,7 @@ SQL_LAST_PER_TYPE = """
   SELECT DISTINCT
          vis.idIntervntn AS presentation_id,
          ses.event_id,
-         vis.strTitre AS presentation_title,
+         vis.titreIntervntn AS presentation_title,
          ses.strTitre    AS session_name,
          ses.[start]     AS session_start
   FROM congres.dbo.v_evt_interventions_salles AS vis
@@ -212,7 +212,7 @@ SQL_ONE_LINE_RULE = """
   SELECT DISTINCT
          vis.idIntervntn AS presentation_id,
          ses.event_id,
-         vis.strTitre AS presentation_title,
+         vis.titreIntervntn AS presentation_title,
          ses.strTitre    AS session_name,
          ses.[start]     AS session_start
   FROM congres.dbo.v_evt_interventions_salles AS vis
