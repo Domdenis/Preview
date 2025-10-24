@@ -17,7 +17,10 @@ Ce script permet de se connecter à une base de données SQL Server (congres), d
   - Suppression des doublons par presentation_id ou session_name
   - 3 stratégies : première occurrence, dernière occurrence, ou plus récente
   - Statistiques de dédoublonnage en temps réel
-- **Export Excel** avec nettoyage des caractères incompatibles
+- **Export Excel enrichi** :
+  - Nettoyage des caractères incompatibles
+  - Inclut le titre de présentation pour toutes les vues
+  - Inclut l'ID de présentation, nom de session, dates
 - **Formatage automatique** des délais (jours, heures, minutes)
 - **Interface utilisateur intuitive** avec Streamlit
 - **Statistiques visuelles** de répartition par mode (onsite/online)
@@ -147,6 +150,45 @@ Après le dédoublonnage, l'application affiche :
 2. Cliquez sur **"Générer l'export"**
 3. Consultez les statistiques et l'aperçu
 4. Téléchargez le fichier Excel avec le bouton **"Télécharger l'Excel"**
+
+### Colonnes exportées
+
+Selon la vue sélectionnée, le fichier Excel contient les colonnes suivantes :
+
+#### Vue "Toutes les lignes brutes"
+- `presentation_id` : ID de la présentation
+- `presentation_title` : **Titre de la présentation**
+- `session_name` : Nom de la session
+- `session_start` : Date/heure de début de session
+- `log_date` : Date/heure du log (upload/preview/terminal)
+- `mode` : Mode (online/onsite)
+- `source` : Source (upload/preview/terminal)
+- `delay_minutes` : Délai en minutes
+- `delay_pretty` : Délai formaté (X jours, Y heures, Z minutes)
+
+#### Vue "Dernier par type"
+- `presentation_id` : ID de la présentation
+- `presentation_title` : **Titre de la présentation**
+- `session_name` : Nom de la session
+- `session_start` : Date/heure de début de session
+- `mode` : Mode (online/onsite)
+- `source` : Source (upload/preview/terminal)
+- `last_log_date` : Date du dernier log par type
+- `delay_minutes` : Délai en minutes
+- `delay_pretty` : Délai formaté
+
+#### Vue "1 ligne par présentation"
+- `presentation_id` : ID de la présentation
+- `presentation_title` : **Titre de la présentation**
+- `session_name` : Nom de la session
+- `session_start` : Date/heure de début de session
+- `mode` : Mode retenu (onsite/online/unknown)
+- `last_upload_date` : Date du dernier upload
+- `last_preview_date` : Date du dernier preview
+- `last_terminal_date` : Date du dernier terminal
+- `chosen_last_date` : Date retenue selon la règle métier
+- `chosen_delay_minutes` : Délai en minutes
+- `chosen_delay_pretty` : Délai formaté
 
 ## Structure du code
 

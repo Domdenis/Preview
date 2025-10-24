@@ -49,6 +49,7 @@ SQL_ALL_LINES = """
   SELECT
     vis.idIntervntn AS program_intervention_id,
     ses.event_id,
+    vis.strTitre AS presentation_title,
     ses.strTitre  AS session_name,
     ses.[start]   AS session_start
   FROM congres.dbo.v_evt_interventions_salles vis
@@ -59,6 +60,7 @@ base_pc AS (
   SELECT
     pc.presentation_id AS program_intervention_id,
     ses.event_id,
+    pc.strTitle AS presentation_title,
     ses.strTitre  AS session_name,
     ses.[start]   AS session_start
   FROM congres.dbo.v_presentation_client pc
@@ -66,9 +68,9 @@ base_pc AS (
   WHERE ses.event_id = ?
 ),
 base AS (
-  SELECT DISTINCT program_intervention_id, event_id, session_name, session_start FROM base_vis
+  SELECT DISTINCT program_intervention_id, event_id, presentation_title, session_name, session_start FROM base_vis
   UNION
-  SELECT DISTINCT program_intervention_id, event_id, session_name, session_start FROM base_pc
+  SELECT DISTINCT program_intervention_id, event_id, presentation_title, session_name, session_start FROM base_pc
 ),
 map_ids AS (
   SELECT b.program_intervention_id, b.program_intervention_id AS intervention_id
@@ -92,6 +94,7 @@ map_ids AS (
 unioned AS (
   SELECT
     b.program_intervention_id AS presentation_id,
+    b.presentation_title,
     b.session_name,
     b.session_start,
     s.[date] AS log_date,
@@ -107,6 +110,7 @@ unioned AS (
 
   SELECT
     b.program_intervention_id AS presentation_id,
+    b.presentation_title,
     b.session_name,
     b.session_start,
     COALESCE(p.datDebutIntervention, p.datFinIntervention) AS log_date,
@@ -123,6 +127,7 @@ unioned AS (
 
   SELECT
     b.program_intervention_id AS presentation_id,
+    b.presentation_title,
     b.session_name,
     b.session_start,
     s.[date] AS log_date,
@@ -135,7 +140,7 @@ unioned AS (
   WHERE LOWER(LTRIM(RTRIM(s.client))) = 'terminal'
 )
 SELECT
-  presentation_id, session_name, session_start,
+  presentation_id, presentation_title, session_name, session_start,
   log_date, mode, source, delay_minutes
 FROM unioned
 WHERE log_date IS NOT NULL
@@ -147,6 +152,7 @@ SQL_LAST_PER_TYPE = """
   SELECT DISTINCT
          vis.idIntervntn AS presentation_id,
          ses.event_id,
+         vis.strTitre AS presentation_title,
          ses.strTitre    AS session_name,
          ses.[start]     AS session_start
   FROM congres.dbo.v_evt_interventions_salles AS vis
@@ -179,22 +185,22 @@ t_terminals AS (
   GROUP BY b.presentation_id
 ),
 unioned AS (
-  SELECT b.presentation_id, b.session_name, b.session_start,
+  SELECT b.presentation_id, b.presentation_title, b.session_name, b.session_start,
          'online' AS mode,  'upload' AS source,  u.last_upload_date AS last_log_date
   FROM base b JOIN u_uploads u ON u.presentation_id = b.presentation_id
 
   UNION ALL
-  SELECT b.presentation_id, b.session_name, b.session_start,
+  SELECT b.presentation_id, b.presentation_title, b.session_name, b.session_start,
          'onsite' AS mode, 'preview' AS source, p.last_preview_date
   FROM base b JOIN p_previews p ON p.presentation_id = b.presentation_id
 
   UNION ALL
-  SELECT b.presentation_id, b.session_name, b.session_start,
+  SELECT b.presentation_id, b.presentation_title, b.session_name, b.session_start,
          'onsite' AS mode, 'terminal' AS source, t.last_terminal_date
   FROM base b JOIN t_terminals t ON t.presentation_id = b.presentation_id
 )
 SELECT
-  presentation_id, session_name, session_start,
+  presentation_id, presentation_title, session_name, session_start,
   mode, source, last_log_date,
   DATEDIFF(minute, last_log_date, session_start) AS delay_minutes
 FROM unioned
@@ -206,6 +212,7 @@ SQL_ONE_LINE_RULE = """
   SELECT DISTINCT
          vis.idIntervntn AS presentation_id,
          ses.event_id,
+         vis.strTitre AS presentation_title,
          ses.strTitre    AS session_name,
          ses.[start]     AS session_start
   FROM congres.dbo.v_evt_interventions_salles AS vis
@@ -239,7 +246,7 @@ t_terminals AS (
 ),
 merged AS (
   SELECT
-    b.presentation_id, b.session_name, b.session_start,
+    b.presentation_id, b.presentation_title, b.session_name, b.session_start,
     u.last_upload_date,
     p.last_preview_date,
     t.last_terminal_date,
@@ -255,6 +262,7 @@ merged AS (
 )
 SELECT
   presentation_id,
+  presentation_title,
   session_name,
   session_start,
   CASE
