@@ -155,10 +155,13 @@ SQL_LAST_PER_TYPE = """
          ses.event_id,
          vis.titreIntervntn AS presentation_title,
          ses.strTitre    AS session_name,
-         ses.[start]     AS session_start
+         ses.[start]     AS session_start,
+         i.available_from AS deposit_date
   FROM congres.dbo.v_evt_interventions_salles AS vis
   JOIN congres.dbo.[session] AS ses
     ON ses.intIdSession = vis.idSess
+  LEFT JOIN congres.dbo.t_evt_interventions AS i
+    ON i.intIdIntervention = vis.idIntervntn
   WHERE ses.event_id = ?
 ),
 u_uploads AS (
@@ -171,7 +174,7 @@ u_uploads AS (
 ),
 p_previews AS (
   SELECT b.presentation_id,
-         MAX(COALESCE(p.datDebutIntervention, p.datFinIntervention)) AS last_preview_date
+         MAX(COALESCE(p.datDebutIntervention, p.datFinIntervention, b.deposit_date)) AS last_preview_date
   FROM base b
   JOIN congres.dbo.v_evt_preview_intervenant_interventions p
     ON p.idIntervention = b.presentation_id
@@ -215,10 +218,13 @@ SQL_ONE_LINE_RULE = """
          ses.event_id,
          vis.titreIntervntn AS presentation_title,
          ses.strTitre    AS session_name,
-         ses.[start]     AS session_start
+         ses.[start]     AS session_start,
+         i.available_from AS deposit_date
   FROM congres.dbo.v_evt_interventions_salles AS vis
   JOIN congres.dbo.[session] AS ses
     ON ses.intIdSession = vis.idSess
+  LEFT JOIN congres.dbo.t_evt_interventions AS i
+    ON i.intIdIntervention = vis.idIntervntn
   WHERE ses.event_id = ?
 ),
 u_uploads AS (
@@ -231,7 +237,7 @@ u_uploads AS (
 ),
 p_previews AS (
   SELECT b.presentation_id,
-         MAX(COALESCE(p.datDebutIntervention, p.datFinIntervention)) AS last_preview_date
+         MAX(COALESCE(p.datDebutIntervention, p.datFinIntervention, b.deposit_date)) AS last_preview_date
   FROM base b
   JOIN congres.dbo.v_evt_preview_intervenant_interventions p
     ON p.idIntervention = b.presentation_id
@@ -248,6 +254,7 @@ t_terminals AS (
 merged AS (
   SELECT
     b.presentation_id, b.presentation_title, b.session_name, b.session_start,
+    b.deposit_date,
     u.last_upload_date,
     p.last_preview_date,
     t.last_terminal_date,
@@ -271,11 +278,12 @@ SELECT
     WHEN last_upload_date IS NOT NULL THEN 'online'
     ELSE 'unknown'
   END AS mode,
+  deposit_date,
   last_upload_date,
   last_preview_date,
   last_terminal_date,
-  COALESCE(last_onsite_date, last_upload_date) AS chosen_last_date,
-  DATEDIFF(minute, COALESCE(last_onsite_date, last_upload_date), session_start) AS chosen_delay_minutes
+  COALESCE(last_onsite_date, last_upload_date, deposit_date) AS chosen_last_date,
+  DATEDIFF(minute, COALESCE(last_onsite_date, last_upload_date, deposit_date), session_start) AS chosen_delay_minutes
 FROM merged
 ORDER BY session_start, presentation_id;
 """
